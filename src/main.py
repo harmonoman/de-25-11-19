@@ -1,44 +1,65 @@
-import requests
-from auth_client import AuthClient
-from logger import AppLogger
+"""
+Main entry point for the unstable API ingestion pipeline.
+
+This module performs the following functions:
+
+1. Loads environment variables from a .env file, including:
+- AWS profile and S3 destinations
+- API endpoints and authentication credentials
+- Output CSV and report filenames
+
+2. Initializes the application logger.
+
+3. Calls the `run_ingestion_pipeline` function, which:
+- Authenticates with the unstable API
+- Iteratively retrieves all pages of customer data
+- Streams records into a CSV file (memory-efficient)
+- Uploads the CSV to S3
+- Generates an ingestion summary report
+
+4. Logs the final output path of the generated CSV.
+
+This script is intended to be executed directly and serves as the orchestrator
+for the end-to-end ingestion workflow, keeping configuration outside of the code
+and inside environment variables for better security and portability.
+"""
+
+import os
+from dotenv import load_dotenv
+from src.utils.logger import AppLogger
+from src.ingest import run_ingestion_pipeline
 
 
 def main():
-    # --------------------------------------------------
-    # 1. Initialize Logger
-    # --------------------------------------------------
-    logger = AppLogger(name="ingestion").get_logger()
 
-    # --------------------------------------------------
-    # 2. Create AuthClient
-    # --------------------------------------------------
-    auth = AuthClient(
-        auth_url="https://xvserzimz6ofnmxbghdkqpgpma0horhq.lambda-url.us-east-2.on.aws/login",
-        username="admin",
-        password="password123",
-        logger=logger
+    load_dotenv()
+
+    logger = AppLogger().get_logger()
+
+    bucket = os.getenv("S3_BUCKET")
+    s3_key = os.getenv("S3_KEY")
+
+    api_url = os.getenv("API_URL")
+    auth_url = os.getenv("AUTH_URL")
+    username = os.getenv("API_USERNAME")
+    password = os.getenv("API_PASSWORD")
+
+    csv_filename = os.getenv("CSV_FILENAME")
+    report_filename = os.getenv("REPORT_FILENAME")
+
+    output_path = run_ingestion_pipeline(
+        bucket,
+        s3_key,
+        api_url,
+        auth_url,
+        username,
+        password,
+        csv_filename,
+        report_filename
     )
 
-    # --------------------------------------------------
-    # 3. Use the AuthClient to make an authenticated request
-    # --------------------------------------------------
-    headers = auth.get_auth_header()
-
-    logger.info("Making authenticated API request...")
-
-    response = requests.get(
-        "https://xvserzimz6ofnmxbghdkqpgpma0horhq.lambda-url.us-east-2.on.aws/customers",
-        headers=headers,
-        timeout=10,
-        params={"page": 1, "limit": 1000}
-    )
-
-    if response.status_code == 200:
-        logger.info("Data fetched successfully!")
-        print(response.json())
-    else:
-        logger.error(f"Failed to fetch data: {response.text}")
+    logger.info(f"Ingestion completed. CSV saved locally at: {output_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

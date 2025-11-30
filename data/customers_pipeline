@@ -1,0 +1,10 @@
+--- Execution Report ---
+Timestamp: 2025-11-30T15:46:48.651506
+Pages Requested: 100
+Successful Pages: 100
+Failed Pages: 0
+Total Retries: 42
+Records Ingested: 100,000
+Execution Time: 2m 50s
+CSV Output: ./data/customers
+Format Chosen: CSV (Reason: Streaming efficiency)
